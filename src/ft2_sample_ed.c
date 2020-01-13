@@ -58,6 +58,7 @@ void fixSample(sampleTyp *s)
 	int32_t loopStart, loopLen, loopEnd, len;
 
 	assert(s != NULL);
+
 	if (s->pek == NULL)
 		return; // empty sample
 
@@ -117,7 +118,7 @@ void fixSample(sampleTyp *s)
 			ptr16 = (int16_t *)s->pek;
 
 			// store old values and old fix position
-			s->fixedSmp1 = ptr16[loopEnd];
+			s->fixedSmp1 = (ptr16[loopEnd]);
 			s->fixedPos = s->repS + s->repL;
 #ifndef LERPMIX
 			s->fixedSmp2 = ptr16[loopEnd+1];
@@ -163,7 +164,7 @@ void fixSample(sampleTyp *s)
 				return;
 
 			loopStart = s->repS / 2;
-			loopLen = s->repL/ 2;
+			loopLen = s->repL / 2;
 
 			loopEnd = loopStart + loopLen;
 			ptr16 = (int16_t *)s->pek;
@@ -526,14 +527,19 @@ void copySmp(void) // copy sample from srcInstr->srcSmp to curInstr->curSmp
 		return;
 
 	mouseAnimOn();
-	thread = SDL_CreateThread(copySampleThread, NULL, NULL);
+	thread = SDL_CreateThread(copySampleThread, NULL
+#if SDL_VERSION_ATLEAST(2,0,4)
+		, NULL
+#endif
+);
 	if (thread == NULL)
 	{
 		okBox(0, "System message", "Couldn't create thread!");
 		return;
 	}
-
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_DetachThread(thread);
+#endif
 }
 
 void xchgSmp(void) // dstSmp <-> srcSmp
@@ -743,7 +749,7 @@ static void sampleLine(int16_t x1, int16_t x2, int16_t y1, int16_t y2)
 
 static void getMinMax16(const void *p, uint32_t scanLen, int16_t *min16, int16_t *max16)
 {
-#if defined __APPLE__ || defined _WIN32 || defined __amd64__ || (defined __i386__ && defined __SSE2__)
+#if (defined __APPLE__ || defined _WIN32 || defined __amd64__ || (defined __i386__ && defined __SSE2__)) && SDL_VERSION_ATLEAST(2,0,0)
 	if (cpu.hasSSE2)
 	{
 		/* Taken with permission from the OpenMPT project (and slightly modified).
@@ -829,7 +835,7 @@ static void getMinMax16(const void *p, uint32_t scanLen, int16_t *min16, int16_t
 
 static void getMinMax8(const void *p, uint32_t scanLen, int8_t *min8, int8_t *max8)
 {
-#if defined __APPLE__ || defined _WIN32 || defined __amd64__ || (defined __i386__ && defined __SSE2__)
+#if (defined __APPLE__ || defined _WIN32 || defined __amd64__ || (defined __i386__ && defined __SSE2__)) && SDL_VERSION_ATLEAST(2,0,0)
 	if (cpu.hasSSE2)
 	{
 		/* Taken with permission from the OpenMPT project (and slightly modified).
@@ -1779,14 +1785,20 @@ void sampCut(void)
 		return;
 
 	mouseAnimOn();
-	thread = SDL_CreateThread(sampCutThread, NULL, NULL);
+	thread = SDL_CreateThread(sampCutThread, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 	if (thread == NULL)
 	{
 		okBox(0, "System message", "Couldn't create thread!");
 		return;
 	}
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_DetachThread(thread);
+#endif
 }
 
 static int32_t SDLCALL sampCopyThread(void *ptr)
@@ -1829,14 +1841,19 @@ void sampCopy(void)
 		return;
 
 	mouseAnimOn();
-	thread = SDL_CreateThread(sampCopyThread, NULL, NULL);
+	thread = SDL_CreateThread(sampCopyThread, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 	if (thread == NULL)
 	{
 		okBox(0, "System message", "Couldn't create thread!");
 		return;
 	}
-
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_DetachThread(thread);
+#endif
 }
 
 static int32_t SDLCALL sampPasteThread(void *ptr)
@@ -2062,14 +2079,19 @@ void sampPaste(void)
 		return;
 
 	mouseAnimOn();
-	thread = SDL_CreateThread(sampPasteThread, NULL, NULL);
+	thread = SDL_CreateThread(sampPasteThread, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 	if (thread == NULL)
 	{
 		okBox(0, "System message", "Couldn't create thread!");
 		return;
 	}
-
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_DetachThread(thread);
+#endif
 }
 
 static int32_t SDLCALL sampCropThread(void *ptr)
@@ -2124,14 +2146,20 @@ void sampCrop(void)
 		return; // no need to crop (the whole sample is marked)
 
 	mouseAnimOn();
-	thread = SDL_CreateThread(sampCropThread, NULL, NULL);
+	thread = SDL_CreateThread(sampCropThread, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 	if (thread == NULL)
 	{
 		okBox(0, "System message", "Couldn't create thread!");
 		return;
 	}
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_DetachThread(thread);
+#endif
 }
 
 void sampXFade(void)
@@ -2503,14 +2531,20 @@ void rbSample8bit(void)
 	if (okBox(2, "System request", "Convert sampledata?") == 1)
 	{
 		mouseAnimOn();
-		thread = SDL_CreateThread(convSmp8Bit, NULL, NULL);
+		thread = SDL_CreateThread(convSmp8Bit, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 		if (thread == NULL)
 		{
 			okBox(0, "System message", "Couldn't create thread!");
 			return;
 		}
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 		SDL_DetachThread(thread);
+#endif
 		return;
 	}
 	else
@@ -2587,14 +2621,20 @@ void rbSample16bit(void)
 	if (okBox(2, "System request", "Convert sampledata?") == 1)
 	{
 		mouseAnimOn();
-		thread = SDL_CreateThread(convSmp16Bit, NULL, NULL);
+		thread = SDL_CreateThread(convSmp16Bit, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 		if (thread == NULL)
 		{
 			okBox(0, "System message", "Couldn't create thread!");
 			return;
 		}
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 		SDL_DetachThread(thread);
+#endif
 		return;
 	}
 	else
@@ -3458,14 +3498,20 @@ void sampleBackwards(void)
 		return;
 
 	mouseAnimOn();
-	thread = SDL_CreateThread(sampleBackwardsThread, NULL, NULL);
+	thread = SDL_CreateThread(sampleBackwardsThread, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 	if (thread == NULL)
 	{
 		okBox(0, "System message", "Couldn't create thread!");
 		return;
 	}
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_DetachThread(thread);
+#endif
 }
 
 static int32_t SDLCALL sampleConvThread(void *ptr)
@@ -3515,14 +3561,20 @@ void sampleConv(void)
 		return;
 
 	mouseAnimOn();
-	thread = SDL_CreateThread(sampleConvThread, NULL, NULL);
+	thread = SDL_CreateThread(sampleConvThread, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 	if (thread == NULL)
 	{
 		okBox(0, "System message", "Couldn't create thread!");
 		return;
 	}
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_DetachThread(thread);
+#endif
 }
 
 static int32_t SDLCALL sampleConvWThread(void *ptr)
@@ -3566,14 +3618,20 @@ void sampleConvW(void)
 		return;
 
 	mouseAnimOn();
-	thread = SDL_CreateThread(sampleConvWThread, NULL, NULL);
+	thread = SDL_CreateThread(sampleConvWThread, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 	if (thread == NULL)
 	{
 		okBox(0, "System message", "Couldn't create thread!");
 		return;
 	}
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_DetachThread(thread);
+#endif
 }
 
 static int32_t SDLCALL fixDCThread(void *ptr)
@@ -3682,14 +3740,20 @@ void fixDC(void)
 		return;
 
 	mouseAnimOn();
-	thread = SDL_CreateThread(fixDCThread, NULL, NULL);
+	thread = SDL_CreateThread(fixDCThread, NULL
+#if SDL_VERSION_ATLEAST(2,0,0)
+		, NULL
+#endif
+);
 	if (thread == NULL)
 	{
 		okBox(0, "System message", "Couldn't create thread!");
 		return;
 	}
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_DetachThread(thread);
+#endif
 }
 
 void smpEdStop(void)

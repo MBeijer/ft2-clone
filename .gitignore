@@ -1,4 +1,7 @@
-
+build*/
+cmake*/
+release/other/ft2-clone
+.idea/
 *.db
 *.ilk
 *.pdb

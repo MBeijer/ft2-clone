@@ -18,7 +18,9 @@
 #include "ft2_diskop.h"
 #include "ft2_gfxdata.h"
 #include "ft2_audioselector.h"
+#ifdef MIDI_ENABLED
 #include "ft2_midi.h"
+#endif
 #include "ft2_gfxdata.h"
 
 #define NUM_CURSORS 6
@@ -55,6 +57,7 @@ void freeMouseCursors(void)
 
 bool createMouseCursors(void) // creates scaled SDL surfaces for current mouse pointer shape
 {
+#if SDL_VERSION_ATLEAST(2,0,0)
 	freeMouseCursors();
 
 	const uint8_t *cursorsSrc = mouseCursors;
@@ -156,7 +159,7 @@ bool createMouseCursors(void) // creates scaled SDL surfaces for current mouse p
 		else if (mouse.mode == MOUSE_MODE_DELETE) setSystemCursor(cursors[1]);
 		else if (mouse.mode == MOUSE_MODE_RENAME) setSystemCursor(cursors[2]);
 	}
-
+#endif
 	return true;
 }
 
@@ -477,12 +480,14 @@ void mouseWheelHandler(bool directionUp)
 						directionUp ? scrollAudInputDevListUp() : scrollAudInputDevListDown();
 				}
 			}
+#ifdef MIDI_ENABLED
 			else if (editor.currConfigScreen == CONFIG_SCREEN_MIDI_INPUT)
 			{
 				// midi input device selector
 				if (mouse.x >= 110 && mouse.x <= 503 && mouse.y <= 173)
 					directionUp ? scrollMidiInputDevListUp() : scrollMidiInputDevListDown();
 			}
+#endif
 		}
 
 		if (!editor.ui.aboutScreenShown  && !editor.ui.helpScreenShown &&
@@ -547,9 +552,11 @@ static bool testPatternDataMouseDown(void)
 
 void mouseButtonUpHandler(uint8_t mouseButton)
 {
+#if SDL_VERSION_ATLEAST(2,0,0)
 #ifndef __APPLE__
 	if (!video.fullscreen) // release mouse button trap
 		SDL_SetWindowGrab(video.window, SDL_FALSE);
+#endif
 #endif
 
 	if (mouseButton == SDL_BUTTON_LEFT)
@@ -628,9 +635,11 @@ void mouseButtonUpHandler(uint8_t mouseButton)
 
 void mouseButtonDownHandler(uint8_t mouseButton)
 {
+#if SDL_VERSION_ATLEAST(2,0,0)
 #ifndef __APPLE__
 	if (!video.fullscreen) // trap mouse pointer while holding down left and/or right button
 		SDL_SetWindowGrab(video.window, SDL_TRUE);
+#endif
 #endif
 
 	// if already holding left button and clicking right, don't do mouse down handling
@@ -715,7 +724,9 @@ void mouseButtonDownHandler(uint8_t mouseButton)
 	if (testPatternDataMouseDown())         return;
 	if (testScopesMouseDown())              return;
 	if (testAudioDeviceListsMouseDown())    return;
+#ifdef MIDI_ENABLED
 	if (testMidiInputDeviceListMouseDown()) return;
+#endif
 }
 
 void handleLastGUIObjectDown(void)
@@ -770,7 +781,9 @@ void readMouseXY(void)
 	{
 		mouse.setPosFlag = false;
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 		if (SDL_GetWindowFlags(video.window) & SDL_WINDOW_SHOWN)
+#endif
 			SDL_WarpMouseInWindow(video.window, mouse.setPosX, mouse.setPosY);
 
 		return;

@@ -60,7 +60,7 @@ bool setNewAudioSettings(void) // only call this from the main input/video threa
 
 	pauseAudio();
 
-	if (!setupAudio(CONFIG_HIDE_ERRORS))
+	if (!setupAudio(CONFIG_SHOW_ERRORS))
 	{
 		// set back old known working settings
 
@@ -91,7 +91,7 @@ bool setNewAudioSettings(void) // only call this from the main input/video threa
 			setConfigIORadioButtonStates();
 
 		// if it didn't work to use the old settings again, then something is seriously wrong...
-		if (!setupAudio(CONFIG_HIDE_ERRORS))
+		if (!setupAudio(CONFIG_SHOW_ERRORS))
 			okBox(0, "System message", "Couldn't find a working audio mode... You'll get no sound / replayer timer!");
 
 		resumeAudio();
@@ -883,7 +883,11 @@ uint64_t getChQueueTimestamp(void)
 void lockAudio(void)
 {
 	if (audio.dev != 0)
+#if SDL_VERSION_ATLEAST(2,0,0)
 		SDL_LockAudioDevice(audio.dev);
+#else
+		SDL_LockAudio();
+#endif
 
 	audio.locked = true;
 }
@@ -1221,7 +1225,7 @@ bool setupAudio(bool showErrorMsg)
 	audio.dev = SDL_OpenAudioDevice(audio.currOutputDevice, 0, &want, &have, SDL_AUDIO_ALLOW_ANY_CHANGE); // prevent SDL2 from resampling
 	if (audio.dev == 0)
 	{
-		if (showErrorMsg)
+	//	if (showErrorMsg)
 			showErrorMsgBox("Couldn't open audio device:\n\"%s\"\n\nDo you have any audio device enabled and plugged in?", SDL_GetError());
 
 		return false;
@@ -1230,9 +1234,9 @@ bool setupAudio(bool showErrorMsg)
 	// test if the received audio format is compatible
 	if (have.format != AUDIO_S16 && have.format != AUDIO_F32)
 	{
-		if (showErrorMsg)
-			showErrorMsgBox("Couldn't open audio device:\nThe program doesn't support an SDL_AudioFormat of '%d' (not 16-bit or 24-bit float).",
-				(uint32_t)have.format);
+		//if (showErrorMsg)
+			showErrorMsgBox("Couldn't open audio device:\nThe program doesn't support an SDL_AudioFormat of '%d' (not 16-bit or 24-bit float).%s",
+				(uint32_t)have.format, SDL_GetError());
 
 		closeAudio();
 		return false;
@@ -1241,7 +1245,7 @@ bool setupAudio(bool showErrorMsg)
 	// test if the received audio rate is compatible
 	if (have.freq != 44100 && have.freq != 48000 && have.freq != 96000)
 	{
-		if (showErrorMsg)
+	//	if (showErrorMsg)
 			showErrorMsgBox("Couldn't open audio device:\nThe program doesn't support an audio output rate of %dHz. Sorry!", have.freq);
 
 		closeAudio();

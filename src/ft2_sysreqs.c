@@ -128,10 +128,11 @@ int16_t okBox(int16_t typ, char *headline, char *text)
 	SDL_Event inputEvent;
 	pushButton_t *p;
 	checkBox_t *c;
-
+#if SDL_VERSION_ATLEAST(2,0,0)
 #ifndef __APPLE__
 	if (!video.fullscreen) // release mouse button trap
 		SDL_SetWindowGrab(video.window, SDL_FALSE);
+#endif
 #endif
 
 	if (editor.editTextFlag)
@@ -143,9 +144,9 @@ int16_t okBox(int16_t typ, char *headline, char *text)
 
 	if (editor.ui.sysReqShown)
 		return 0;
-
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_EventState(SDL_DROPFILE, SDL_DISABLE);
-
+#endif
 	editor.ui.sysReqShown = true;
 	mouseAnimOff();
 
@@ -321,8 +322,9 @@ int16_t okBox(int16_t typ, char *headline, char *text)
 	unstuckLastUsedGUIElement();
 
 	showBottomScreen();
-
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+#endif
 	return returnVal;
 }
 
@@ -378,12 +380,14 @@ int16_t inputBox(int16_t typ, char *headline, char *edText, uint16_t maxStrLen)
 		return 0;
 	}
 
+#if SDL_VERSION_ATLEAST(2,0,0)
 #ifndef __APPLE__
 	if (!video.fullscreen) // release mouse button trap
 		SDL_SetWindowGrab(video.window, SDL_FALSE);
 #endif
 
 	SDL_EventState(SDL_DROPFILE, SDL_DISABLE);
+#endif
 
 	editor.ui.sysReqShown = true;
 	mouseAnimOff();
@@ -467,7 +471,7 @@ int16_t inputBox(int16_t typ, char *headline, char *edText, uint16_t maxStrLen)
 						keyb.ignoreTextEditKey = false;
 						continue;
 					}
-
+#if SDL_VERSION_ATLEAST(2,0,0)
 					inputText = utf8ToCp437(inputEvent.text.text, false);
 					if (inputText != NULL)
 					{
@@ -476,6 +480,7 @@ int16_t inputBox(int16_t typ, char *headline, char *edText, uint16_t maxStrLen)
 
 						free(inputText);
 					}
+#endif
 				}
 			}
 			else if (inputEvent.type == SDL_KEYDOWN)
@@ -569,8 +574,9 @@ int16_t inputBox(int16_t typ, char *headline, char *edText, uint16_t maxStrLen)
 	unstuckLastUsedGUIElement();
 
 	showBottomScreen();
-
+#if SDL_VERSION_ATLEAST(2,0,0)
 	SDL_EventState(SDL_DROPFILE, SDL_ENABLE);
+#endif
 	return returnVal;
 }
 

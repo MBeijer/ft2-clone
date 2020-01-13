@@ -232,6 +232,7 @@ void aboutFrame(void)
 void showAboutScreen(void) // called once when About screen is opened
 {
 	const char *infoString = "Clone by Olav \"8bitbubsy\" S\025rensen - https://16-bits.org";
+	const char *extraInfo = "SDL1.2/BigEndian version by Marlon Beijer @ AmigaDev.com";
 	char verText[32];
 	uint16_t x, y;
 
@@ -246,12 +247,15 @@ void showAboutScreen(void) // called once when About screen is opened
 	showPushButton(PB_EXIT_ABOUT);
 
 	blit32(91, 31, ft2Logo, FT2_LOGO_W, FT2_LOGO_H);
-    blit(146, 113, aboutText, ABOUT_TEXT_W, ABOUT_TEXT_H);
+	blit(146, 113, aboutText, ABOUT_TEXT_W, ABOUT_TEXT_H);
 
 	x = 5 + (SCREEN_W - textWidth(infoString)) / 2;
 	y = 147;
 	textOutBorder(x, y, PAL_FORGRND, PAL_BUTTON2, infoString);
 
+	x = 5 + (SCREEN_W - textWidth(extraInfo)) / 2;
+	y = 160;
+	textOut(x, y, PAL_FORGRND, extraInfo);
 	sprintf(verText, "v%s (compiled on %s)", PROG_VER_STR, __DATE__);
 	x = ((3 + ABOUT_SCREEN_W) - textWidth(verText)) / 2;
 	y = (3 + ABOUT_SCREEN_H) - ((FONT1_CHAR_H - 2) + 3);
