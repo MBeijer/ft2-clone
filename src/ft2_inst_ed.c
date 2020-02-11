@@ -18,6 +18,7 @@
 #include "ft2_video.h"
 #include "ft2_sample_loader.h"
 #include "ft2_diskop.h"
+#include "ft2_module_loader.h"
 
 #ifdef _MSC_VER
 #pragma pack(push)
@@ -71,7 +72,7 @@ typedef struct instrXIHeaderTyp_t
 	uint8_t ta[96];
 	int16_t envVP[12][2], envPP[12][2];
 	uint8_t envVPAnt, envPPAnt, envVSust, envVRepS, envVRepE, envPSust, envPRepS;
-	uint8_t envPRepE, envVtyp, envPtyp, vibTyp, vibSweep, vibDepth, vibRate;
+	uint8_t envPRepE, envVTyp, envPTyp, vibTyp, vibSweep, vibDepth, vibRate;
 	uint16_t fadeOut;
 	uint8_t midiOn, midiChannel;
 	int16_t midiProgram, midiBend;
@@ -794,24 +795,28 @@ void relToneDown(void)
 
 void volEnvAdd(void)
 {
-	int16_t i;
+	int16_t i, ant;
 	instrTyp *ins = instr[editor.curInstr];
 
-	if (ins == NULL || editor.curInstr == 0 || ins->envVPAnt >= 12)
+	ant = ins->envVPAnt;
+	if (ins == NULL || editor.curInstr == 0 || ant >= 12)
 		return;
 
 	i = (int16_t)editor.currVolEnvPoint;
+	if (i < 0 || i >= ant)
+	{
+		i = ant-1;
+		if (i < 0)
+			i = 0;
+	}
 
-	if (i < 0 || i >= ins->envVPAnt)
-		i = ins->envVPAnt - 1;
-
-	if (i < ins->envVPAnt-1 && ins->envVP[i+1][0]-ins->envVP[i][0] < 2)
+	if (i < ant-1 && ins->envVP[i+1][0]-ins->envVP[i][0] < 2)
 		return;
 
 	if (ins->envVP[i][0] >= 323)
 		return;
 
-	for (int16_t j = ins->envVPAnt; j > i; j--)
+	for (int16_t j = ant; j > i; j--)
 	{
 		ins->envVP[j][0] = ins->envVP[j-1][0];
 		ins->envVP[j][1] = ins->envVP[j-1][1];
@@ -821,7 +826,7 @@ void volEnvAdd(void)
 	if (ins->envVRepS > i) { ins->envVRepS++; drawVolEnvRepS(); }
 	if (ins->envVRepE > i) { ins->envVRepE++; drawVolEnvRepE(); }
 
-	if (i < ins->envVPAnt-1)
+	if (i < ant-1)
 	{
 		ins->envVP[i+1][0] = (ins->envVP[i][0] + ins->envVP[i+2][0]) / 2;
 		ins->envVP[i+1][1] = (ins->envVP[i][1] + ins->envVP[i+2][1]) / 2;
@@ -846,7 +851,6 @@ void volEnvDel(void)
 	uint8_t drawSust, drawRepS, drawRepE;
 	int16_t i;
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0 || ins->envVPAnt <= 2)
 		return;
 
@@ -879,6 +883,11 @@ void volEnvDel(void)
 	if (drawRepS) drawVolEnvRepS();
 	if (drawRepE) drawVolEnvRepE();
 
+	if (ins->envVPAnt == 0)
+		editor.currVolEnvPoint = 0;
+	else if (editor.currVolEnvPoint >= ins->envVPAnt)
+		editor.currVolEnvPoint = ins->envVPAnt-1;
+
 	updateVolEnv = true;
 	setSongModifiedFlag();
 }
@@ -886,7 +895,6 @@ void volEnvDel(void)
 void volEnvSusUp(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -902,7 +910,6 @@ void volEnvSusUp(void)
 void volEnvSusDown(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -918,7 +925,6 @@ void volEnvSusDown(void)
 void volEnvRepSUp(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -934,7 +940,6 @@ void volEnvRepSUp(void)
 void volEnvRepSDown(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -950,7 +955,6 @@ void volEnvRepSDown(void)
 void volEnvRepEUp(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -966,7 +970,6 @@ void volEnvRepEUp(void)
 void volEnvRepEDown(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -981,24 +984,28 @@ void volEnvRepEDown(void)
 
 void panEnvAdd(void)
 {
-	int16_t i;
+	int16_t i, ant;
 	instrTyp *ins = instr[editor.curInstr];
 
-	if (ins == NULL || editor.curInstr == 0 || ins->envPPAnt >= 12)
+	ant = ins->envPPAnt;
+	if (ins == NULL || editor.curInstr == 0 || ant >= 12)
 		return;
 
 	i = (int16_t)editor.currPanEnvPoint;
+	if (i < 0 || i >= ant)
+	{
+		i = ant-1;
+		if (i < 0)
+			i = 0;
+	}
 
-	if (i < 0 || i >= ins->envPPAnt)
-		i = ins->envPPAnt - 1;
-
-	if (i < ins->envPPAnt-1 && ins->envPP[i+1][0]-ins->envPP[i][0] < 2)
+	if (i < ant-1 && ins->envPP[i+1][0]-ins->envPP[i][0] < 2)
 		return;
 
 	if (ins->envPP[i][0] >= 323)
 		return;
 
-	for (int16_t j = ins->envPPAnt; j > i; j--)
+	for (int16_t j = ant; j > i; j--)
 	{
 		ins->envPP[j][0] = ins->envPP[j-1][0];
 		ins->envPP[j][1] = ins->envPP[j-1][1];
@@ -1008,7 +1015,7 @@ void panEnvAdd(void)
 	if (ins->envPRepS > i) { ins->envPRepS++; drawPanEnvRepS(); }
 	if (ins->envPRepE > i) { ins->envPRepE++; drawPanEnvRepE(); }
 
-	if (i < ins->envPPAnt-1)
+	if (i < ant-1)
 	{
 		ins->envPP[i+1][0] = (ins->envPP[i][0] + ins->envPP[i+2][0]) / 2;
 		ins->envPP[i+1][1] = (ins->envPP[i][1] + ins->envPP[i+2][1]) / 2;
@@ -1033,7 +1040,6 @@ void panEnvDel(void)
 	uint8_t drawSust, drawRepS, drawRepE;
 	int16_t i;
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0 || ins->envPPAnt <= 2)
 		return;
 
@@ -1066,6 +1072,11 @@ void panEnvDel(void)
 	if (drawRepS) drawPanEnvRepS();
 	if (drawRepE) drawPanEnvRepE();
 
+	if (ins->envPPAnt == 0)
+		editor.currPanEnvPoint = 0;
+	else if (editor.currPanEnvPoint >= ins->envPPAnt)
+		editor.currPanEnvPoint = ins->envPPAnt-1;
+
 	updatePanEnv = true;
 	setSongModifiedFlag();
 }
@@ -1073,7 +1084,6 @@ void panEnvDel(void)
 void panEnvSusUp(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -1089,7 +1099,6 @@ void panEnvSusUp(void)
 void panEnvSusDown(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -1105,7 +1114,6 @@ void panEnvSusDown(void)
 void panEnvRepSUp(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -1121,7 +1129,6 @@ void panEnvRepSUp(void)
 void panEnvRepSDown(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -1137,7 +1144,6 @@ void panEnvRepSDown(void)
 void panEnvRepEUp(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -1153,7 +1159,6 @@ void panEnvRepEUp(void)
 void panEnvRepEDown(void)
 {
 	instrTyp *ins = instr[editor.curInstr];
-
 	if (ins == NULL || editor.curInstr == 0)
 		return;
 
@@ -1981,7 +1986,7 @@ static void writeEnvelope(int32_t nr)
 
 	// draw center line on pan envelope
 	if (nr == 1)
-		envelopeLine(nr, 8, 33, 335, 33, PAL_BLCKMRK);
+		envelopeLine(nr, 8, 33, 332, 33, PAL_BLCKMRK);
 
 	if (ins == NULL)
 		return;
@@ -2006,7 +2011,7 @@ static void writeEnvelope(int32_t nr)
 			le = -1;
 		}
 
-		curEnvP  = ins->envVP;
+		curEnvP = ins->envVP;
 		selected = editor.currVolEnvPoint;
 	}
 	else
@@ -2028,7 +2033,7 @@ static void writeEnvelope(int32_t nr)
 			le = -1;
 		}
 
-		curEnvP  = ins->envPP;
+		curEnvP = ins->envPP;
 		selected = editor.currPanEnvPoint;
 	}
 
@@ -2041,38 +2046,48 @@ static void writeEnvelope(int32_t nr)
 	// draw envelope
 	for (i = 0; i < nd; i++)
 	{
-		x = curEnvP[i][0]; x = CLAMP(x, 0, 340);
-		y = curEnvP[i][1]; y = CLAMP(y, 0,  64);
+		x = curEnvP[i][0];
+		y = curEnvP[i][1];
 
-		envelopeDot(nr, 7 + x, 64 - y);
+		x = CLAMP(x, 0, 324);
+		
+		if (nr == 0)
+			y = CLAMP(y, 0, 64);
+		else
+			y = CLAMP(y, 0, 63);
 
-		// draw "envelope selected" data
-		if (i == selected)
+		if ((uint16_t)curEnvP[i][0] <= 324)
 		{
-			envelopeLine(nr, 5  + x, 64 - y, 5  + x, 66 - y, PAL_BLCKTXT);
-			envelopeLine(nr, 11 + x, 64 - y, 11 + x, 66 - y, PAL_BLCKTXT);
-			envelopePixel(nr, 5, 65 - y, PAL_BLCKTXT);
-			envelopePixel(nr, 8 + x, 65, PAL_BLCKTXT);
-		}
+			envelopeDot(nr, 7 + x, 64 - y);
 
-		// draw loop start marker
-		if (i == ls)
-		{
-			envelopeLine(nr, x + 6, 1, x + 10, 1, PAL_PATTEXT);
-			envelopeLine(nr, x + 7, 2, x +  9, 2, PAL_PATTEXT);
-			envelopeVertLine(nr, x + 8, 1, PAL_PATTEXT);
-		}
+			// draw "envelope selected" data
+			if (i == selected)
+			{
+				envelopeLine(nr, 5  + x, 64 - y, 5  + x, 66 - y, PAL_BLCKTXT);
+				envelopeLine(nr, 11 + x, 64 - y, 11 + x, 66 - y, PAL_BLCKTXT);
+				envelopePixel(nr, 5, 65 - y, PAL_BLCKTXT);
+				envelopePixel(nr, 8 + x, 65, PAL_BLCKTXT);
+			}
 
-		// draw sustain marker
-		if (i == sp)
-			envelopeVertLine(nr, x + 8, 1, PAL_BLCKTXT);
+			// draw loop start marker
+			if (i == ls)
+			{
+				envelopeLine(nr, x + 6, 1, x + 10, 1, PAL_PATTEXT);
+				envelopeLine(nr, x + 7, 2, x +  9, 2, PAL_PATTEXT);
+				envelopeVertLine(nr, x + 8, 1, PAL_PATTEXT);
+			}
 
-		// draw loop end marker
-		if (i == le)
-		{
-			envelopeLine(nr, x + 6, 65, x + 10, 65, PAL_PATTEXT);
-			envelopeLine(nr, x + 7, 64, x +  9, 64, PAL_PATTEXT);
-			envelopeVertLine(nr, x + 8, 1, PAL_PATTEXT);
+			// draw sustain marker
+			if (i == sp)
+				envelopeVertLine(nr, x + 8, 1, PAL_BLCKTXT);
+
+			// draw loop end marker
+			if (i == le)
+			{
+				envelopeLine(nr, x + 6, 65, x + 10, 65, PAL_PATTEXT);
+				envelopeLine(nr, x + 7, 64, x +  9, 64, PAL_PATTEXT);
+				envelopeVertLine(nr, x + 8, 1, PAL_PATTEXT);
+			}
 		}
 
 		// draw envelope line
@@ -2471,13 +2486,16 @@ bool testInstrVolEnvMouseDown(bool mouseButtonDown)
 			if (editor.currVolEnvPoint == ant-1)
 			{
 				minX = ins->envVP[editor.currVolEnvPoint-1][0] + 1;
-				maxX = 325;
+				maxX = 324;
 			}
 			else
 			{
 				minX = ins->envVP[editor.currVolEnvPoint-1][0] + 1;
 				maxX = ins->envVP[editor.currVolEnvPoint+1][0] - 1;
 			}
+
+			minX = CLAMP(minX, 0, 324);
+			maxX = CLAMP(maxX, 0, 324);
 
 			ins->envVP[editor.currVolEnvPoint][0] = (int16_t)(CLAMP(mx, minX, maxX));
 			updateVolEnv = true;
@@ -2567,13 +2585,16 @@ bool testInstrPanEnvMouseDown(bool mouseButtonDown)
 			if (editor.currPanEnvPoint == ant-1)
 			{
 				minX = ins->envPP[editor.currPanEnvPoint-1][0] + 1;
-				maxX = 325;
+				maxX = 324;
 			}
 			else
 			{
 				minX = ins->envPP[editor.currPanEnvPoint-1][0] + 1;
 				maxX = ins->envPP[editor.currPanEnvPoint+1][0] - 1;
 			}
+
+			minX = CLAMP(minX, 0, 324);
+			maxX = CLAMP(maxX, 0, 324);
 
 			ins->envPP[editor.currPanEnvPoint][0] = (int16_t)(CLAMP(mx, minX, maxX));
 			updatePanEnv = true;
@@ -2919,11 +2940,13 @@ bool testInstrSwitcherMouseDown(void)
 static int32_t SDLCALL saveInstrThread(void *ptr)
 {
 	int16_t n;
+	int32_t i;
 	size_t result;
 	FILE *f;
 	instrXIHeaderTyp ih;
-	sampleTyp *srcSmp;
-	sampleHeaderTyp *dstSmpHdr;
+	instrTyp *ins;
+	sampleTyp *s;
+	sampleHeaderTyp *dst;
 
 	(void)ptr;
 
@@ -2934,7 +2957,7 @@ static int32_t SDLCALL saveInstrThread(void *ptr)
 	}
 
 	n = getUsedSamples(saveInstrNr);
-	if (n == 0)
+	if (n == 0 || instr[saveInstrNr] == NULL)
 	{
 		okBoxThreadSafe(0, "System message", "Instrument is empty!");
 		return false;
@@ -2947,7 +2970,8 @@ static int32_t SDLCALL saveInstrThread(void *ptr)
 		return false;
 	}
 
-	memset(&ih, 0, sizeof (ih));
+	memset(&ih, 0, sizeof (ih)); // important, also clears reserved stuff
+
 	memcpy(ih.sig, "Extended Instrument: ", 21);
 	memset(ih.name, ' ', 22);
 	memcpy(ih.name, song.instrName[saveInstrNr], strlen(song.instrName[saveInstrNr]));
@@ -2955,17 +2979,53 @@ static int32_t SDLCALL saveInstrThread(void *ptr)
 	memcpy(ih.progName, PROG_NAME_STR, 20);
 	ih.ver = 0x0102;
 
-	memcpy(ih.ta, &instr[saveInstrNr], INSTR_SIZE);
+	// copy over instrument struct data to instrument header
+	ins = instr[saveInstrNr];
+	memcpy(ih.ta, ins->ta, 96);
+	memcpy(ih.envVP, ins->envVP, 12*2*sizeof(int16_t));
+	memcpy(ih.envPP, ins->envPP, 12*2*sizeof(int16_t));
+	ih.envVPAnt = ins->envVPAnt;
+	ih.envPPAnt = ins->envPPAnt;
+	ih.envVSust = ins->envVSust;
+	ih.envVRepS = ins->envVRepS;
+	ih.envVRepE = ins->envVRepE;
+	ih.envPSust = ins->envPSust;
+	ih.envPRepS = ins->envPRepS;
+	ih.envPRepE = ins->envPRepE;
+	ih.envVTyp = ins->envVTyp;
+	ih.envPTyp = ins->envPTyp;
+	ih.vibTyp = ins->vibTyp;
+	ih.vibSweep = ins->vibSweep;
+	ih.vibDepth = ins->vibDepth;
+	ih.vibRate = ins->vibRate;
+	ih.fadeOut = ins->fadeOut;
+	ih.midiOn = ins->midiOn ? 1 : 0;
+	ih.midiChannel = ins->midiChannel;
+	ih.midiProgram = ins->midiProgram;
+	ih.midiBend = ins->midiBend;
+	ih.mute = ins->mute ? 1 : 0;
 	ih.antSamp = n;
 
-	for (int16_t i = 0; i < n; i++)
+	// copy over sample struct datas to sample headers
+	for (i = 0; i < n; i++)
 	{
-		srcSmp = &instr[saveInstrNr]->samp[i];
-		dstSmpHdr = &ih.samp[i];
+		s = &instr[saveInstrNr]->samp[i];
+		dst = &ih.samp[i];
 
-		memcpy(&dstSmpHdr->len, &srcSmp->len, 12+4+2 + strlen(srcSmp->name));
-		if (srcSmp->pek == NULL)
-			dstSmpHdr->len = 0;
+		dst->len = s->len;
+		dst->repS = s->repS;
+		dst->repL = s->repL;
+		dst->vol = s->vol;
+		dst->fine = s->fine;
+		dst->typ = s->typ;
+		dst->pan = s->pan;
+		dst->relTon = s->relTon;
+
+		dst->nameLen = (uint8_t)strlen(s->name);
+		memcpy(dst->name, s->name, 22);
+
+		if (s->pek == NULL)
+			dst->len = 0;
 	}
 
 	result = fwrite(&ih, INSTR_XI_HEADER_SIZE + (ih.antSamp * sizeof (sampleHeaderTyp)), 1, f);
@@ -2977,20 +3037,20 @@ static int32_t SDLCALL saveInstrThread(void *ptr)
 	}
 
 	pauseAudio();
-	for (int16_t i = 0; i < n; i++)
+	for (i = 0; i < n; i++)
 	{
-		srcSmp = &instr[saveInstrNr]->samp[i];
-		if (srcSmp->pek != NULL)
+		s = &instr[saveInstrNr]->samp[i];
+		if (s->pek != NULL && s->len > 0)
 		{
-			restoreSample(srcSmp);
-			samp2Delta(srcSmp->pek, srcSmp->len, srcSmp->typ);
+			restoreSample(s);
+			samp2Delta(s->pek, s->len, s->typ);
 
-			result = fwrite(srcSmp->pek, 1, srcSmp->len, f);
+			result = fwrite(s->pek, 1, s->len, f);
 
-			delta2Samp(srcSmp->pek, srcSmp->len, srcSmp->typ);
-			fixSample(srcSmp);
+			delta2Samp(s->pek, s->len, s->typ);
+			fixSample(s);
 
-			if (result != (size_t)srcSmp->len) // write not OK
+			if (result != (size_t)s->len) // write not OK
 			{
 				resumeAudio();
 				fclose(f);
@@ -3036,10 +3096,7 @@ void saveInstr(UNICHAR *filenameU, int16_t nr)
 
 static int16_t getPATNote(int32_t freq)
 {
-	double dFreq;
-
-	dFreq = ((log(freq / (440.0 * 1000.0)) / M_LN2) * 12.0) + 48.0 + 9.0;
-	return (int16_t)round(dFreq);
+	return (int16_t)round(((log(freq / (440.0 * 1000.0)) / M_LN2) * 12.0) + 48.0 + 9.0);
 }
 
 static int32_t SDLCALL loadInstrThread(void *ptr)
@@ -3047,11 +3104,13 @@ static int32_t SDLCALL loadInstrThread(void *ptr)
 	bool stereoWarning;
 	int8_t *newPtr;
 	int16_t a, b;
+	int32_t i, j;
 	double dFreq;
 	FILE *f;
 	instrXIHeaderTyp ih;
 	instrPATHeaderTyp ih_PAT;
 	instrPATWaveHeaderTyp ih_PATWave;
+	sampleHeaderTyp *src;
 	sampleTyp *s;
 	instrTyp *ins;
 
@@ -3085,14 +3144,16 @@ static int32_t SDLCALL loadInstrThread(void *ptr)
 			goto loadDone;
 		}
 
-		if (ih.ver == 0x0101)
+		if (ih.ver == 0x0101) // not even FT2.01 can save old v1.01 .XI files, so I have no way to verify this.
 		{
-			fseek(f, -2 - 15 - 1 - 2, SEEK_CUR);
+			fseek(f, -20, SEEK_CUR);
 			ih.antSamp = ih.midiProgram;
-			memset(&ih.midiProgram, 0, 2+15+1+2);
+			ih.midiProgram = 0;
+			ih.midiBend = 0;
+			ih.mute = false;
 		}
 
-		if (ih.antSamp > 16)
+		if (ih.antSamp > MAX_SMP_PER_INST)
 		{
 			okBoxThreadSafe(0, "System message", "Incompatible instrument!");
 			goto loadDone;
@@ -3114,34 +3175,66 @@ static int32_t SDLCALL loadInstrThread(void *ptr)
 				goto loadDone;
 			}
 
-			// sanitize stuff for malicious instruments
-			ih.midiProgram = CLAMP(ih.midiProgram, 0, 127);
-			ih.midiBend = CLAMP(ih.midiBend, 0, 36);
+			// copy instrument header elements to our instrument struct
 
-			if (ih.midiChannel > 15) ih.midiChannel = 15;
-			if (ih.mute != 1) ih.mute = 0;
-			if (ih.midiOn!= 1) ih.midiOn = 0;
-			if (ih.vibDepth > 0x0F) ih.vibDepth = 0x0F;
-			if (ih.vibRate > 0x3F) ih.vibRate = 0x3F;
-			if (ih.vibTyp > 3) ih.vibTyp = 0;
+			ins = instr[editor.curInstr];
+			memcpy(ins->ta, ih.ta, 96);
+			memcpy(ins->envVP, ih.envVP, 12*2*sizeof(int16_t));
+			memcpy(ins->envPP, ih.envPP, 12*2*sizeof(int16_t));
+			ins->envVPAnt = ih.envVPAnt;
+			ins->envPPAnt = ih.envPPAnt;
+			ins->envVSust = ih.envVSust;
+			ins->envVRepS = ih.envVRepS;
+			ins->envVRepE = ih.envVRepE;
+			ins->envPSust = ih.envPSust;
+			ins->envPRepS = ih.envPRepS;
+			ins->envPRepE = ih.envPRepE;
+			ins->envVTyp = ih.envVTyp;
+			ins->envPTyp = ih.envPTyp;
+			ins->vibTyp = ih.vibTyp;
+			ins->vibSweep = ih.vibSweep;
+			ins->vibDepth = ih.vibDepth;
+			ins->vibRate = ih.vibRate;
+			ins->fadeOut = ih.fadeOut;
+			ins->midiOn = (ih.midiOn > 0) ? true : false;
+			ins->midiChannel = ih.midiChannel;
+			ins->midiProgram = ih.midiProgram;
+			ins->midiBend = ih.midiBend;
+			ins->mute = (ih.mute > 0) ? true : false;
+			ins->antSamp = ih.antSamp; // used in loadInstrSample()
 
-			for (int16_t i = 0; i < 96; i++)
+			// sanitize stuff for broken/unsupported instruments
+			ins->midiProgram = CLAMP(ins->midiProgram, 0, 127);
+			ins->midiBend = CLAMP(ins->midiBend, 0, 36);
+
+			if (ins->midiChannel > 15) ins->midiChannel = 15;
+			if (ins->vibDepth > 0x0F) ins->vibDepth = 0x0F;
+			if (ins->vibRate > 0x3F) ins->vibRate = 0x3F;
+			if (ins->vibTyp > 3) ins->vibTyp = 0;
+
+			for (i = 0; i < 96; i++)
 			{
-				if (ih.ta[i] > 15)
-					ih.ta[i] = 15;
+				if (ins->ta[i] > 15)
+					ins->ta[i] = 15;
 			}
 
-			if (ih.envVPAnt > 12) ih.envVPAnt = 12;
-			if (ih.envVRepS > 11) ih.envVRepS = 11;
-			if (ih.envVRepE > 11) ih.envVRepE = 11;
-			if (ih.envVSust > 11) ih.envVSust = 11;
-			if (ih.envPPAnt > 12) ih.envPPAnt = 12;
-			if (ih.envPRepS > 11) ih.envPRepS = 11;
-			if (ih.envPRepE > 11) ih.envPRepE = 11;
-			if (ih.envPSust > 11) ih.envPSust = 11;
-			// ----------------------------------------
+			if (ins->envVPAnt > 12) ins->envVPAnt = 12;
+			if (ins->envVRepS > 11) ins->envVRepS = 11;
+			if (ins->envVRepE > 11) ins->envVRepE = 11;
+			if (ins->envVSust > 11) ins->envVSust = 11;
+			if (ins->envPPAnt > 12) ins->envPPAnt = 12;
+			if (ins->envPRepS > 11) ins->envPRepS = 11;
+			if (ins->envPRepE > 11) ins->envPRepE = 11;
+			if (ins->envPSust > 11) ins->envPSust = 11;
 
-			memcpy(instr[editor.curInstr]->ta, ih.ta, INSTR_SIZE);
+			for (i = 0; i < 12; i++)
+			{
+				if ((uint16_t)ins->envVP[i][0] > 32767) ins->envVP[i][0] = 32767;
+				if ((uint16_t)ins->envPP[i][0] > 32767) ins->envPP[i][0] = 32767;
+				if ((uint16_t)ins->envVP[i][1] > 64) ins->envVP[i][1] = 64;
+				if ((uint16_t)ins->envPP[i][1] > 63) ins->envPP[i][1] = 63;
+				
+			}
 
 			if (fread(ih.samp, sizeof (sampleHeaderTyp) * ih.antSamp, 1, f) != 1)
 			{
@@ -3151,23 +3244,50 @@ static int32_t SDLCALL loadInstrThread(void *ptr)
 				goto loadDone;
 			}
 
-			for (int16_t i = 0; i < ih.antSamp; i++)
-				memcpy(&instr[editor.curInstr]->samp[i], &ih.samp[i], 12 + 4 + 24);
+			for (i = 0; i < ih.antSamp; i++)
+			{
+				s = &instr[editor.curInstr]->samp[i];
+				src = &ih.samp[i];
+
+				// copy sample header elements to our sample struct
+
+				s->len = src->len;
+				s->repS = src->repS;
+				s->repL = src->repL;
+				s->vol = src->vol;
+				s->fine = src->fine;
+				s->typ = src->typ;
+				s->pan = src->pan;
+				s->relTon = src->relTon;
+				memcpy(s->name, src->name, 22);
+				s->name[22] = '\0';
+
+				// dst->pek is set up later
+
+				// trim off spaces at end of name
+				for (j = 21; j >= 0; j--)
+				{
+					if (s->name[j] == ' ' || s->name[j] == 0x1A)
+						s->name[j] = '\0';
+					else
+						break;
+				}
+
+				// sanitize stuff broken/unsupported samples
+				if (s->vol > 64)
+					s->vol = 64;
+
+				s->relTon = CLAMP(s->relTon, -48, 71);
+			}
 		}
 
-		for (int16_t i = 0; i < ih.antSamp; i++)
+		for (i = 0; i < ih.antSamp; i++)
 		{
 			s = &instr[editor.curInstr]->samp[i];
 
-			// sanitize stuff for malicious modules
-			if (s->vol > 64)
-				s->vol = 64;
-
-			s->relTon = CLAMP(s->relTon, -48, 71);
-
-			// if a sample has both forward loop and pingpong loop set, make it pingpong loop only (FT2 behavior)
+			// if a sample has both forward loop and pingpong loop set, make it pingpong loop only (FT2 mixer behavior)
 			if ((s->typ & 3) == 3)
-				s->typ = 2;
+				s->typ &= 0xFE;
 
 			if (s->len > 0)
 			{
@@ -3206,6 +3326,7 @@ static int32_t SDLCALL loadInstrThread(void *ptr)
 					stereoWarning = true;
 				}
 
+				checkSampleRepeat(s);
 				fixSample(s);
 			}
 		}
@@ -3239,7 +3360,7 @@ static int32_t SDLCALL loadInstrThread(void *ptr)
 			memset(song.instrName[editor.curInstr], 0, 22 + 1);
 			memcpy(song.instrName[editor.curInstr], ih_PAT.instrName, 16);
 
-			for (int16_t i = 0; i < ih_PAT.antSamp; i++)
+			for (i = 0; i < ih_PAT.antSamp; i++)
 			{
 				s = &instr[editor.curInstr]->samp[i];
 				ins = instr[editor.curInstr];
@@ -3264,8 +3385,14 @@ static int32_t SDLCALL loadInstrThread(void *ptr)
 				if (i == 0)
 				{
 					ins->vibSweep = ih_PATWave.vibSweep;
-					ins->vibRate  = ih_PATWave.vibRate  / 2; if (ins->vibRate  > 0x3F) ins->vibRate  = 0x3F;
-					ins->vibDepth = ih_PATWave.vibDepth / 2; if (ins->vibDepth > 0x0F) ins->vibDepth = 0x0F;
+
+					ins->vibRate = ih_PATWave.vibRate / 2;
+					if (ins->vibRate > 0x3F)
+						ins->vibRate = 0x3F;
+
+					ins->vibDepth = ih_PATWave.vibDepth / 2;
+					if (ins->vibDepth > 0x0F)
+						ins->vibDepth = 0x0F;
 				}
 
 				s = &instr[editor.curInstr]->samp[i];
@@ -3281,7 +3408,7 @@ static int32_t SDLCALL loadInstrThread(void *ptr)
 						s->typ |= 1; // forward loop
 				}
 
-				s->pan = (ih_PATWave.pan == 8) ? 128 : (ih_PATWave.pan * 17); // FT2 does <<4 here, I don't like that!
+				s->pan = ih_PATWave.pan << 4;
 				s->len = ih_PATWave.waveSize;
 
 				s->repS = ih_PATWave.repS;
@@ -3306,13 +3433,16 @@ static int32_t SDLCALL loadInstrThread(void *ptr)
 				dFreq = round((1.0 + ih_PATWave.fineTune / 512.0) * ih_PATWave.sampleRate);
 				tuneSample(s, (int32_t)dFreq);
 
-				s->relTon -= (int8_t)(getPATNote(ih_PATWave.rootFrq) - (12 * 3));
-				s->relTon  = CLAMP(s->relTon, -48, 71);
+				s->relTon -= (int8_t)(getPATNote(ih_PATWave.rootFrq) - (12*3));
+				s->relTon = CLAMP(s->relTon, -48, 71);
 
-				a = getPATNote(ih_PATWave.lowFrq);   a = CLAMP(a, 0, 95);
-				b = getPATNote(ih_PATWave.highFreq); b = CLAMP(b, 0, 95);
+				a = getPATNote(ih_PATWave.lowFrq);
+				a = CLAMP(a, 0, 95);
 
-				for (int16_t j = a; j <= b; j++)
+				b = getPATNote(ih_PATWave.highFreq);
+				b = CLAMP(b, 0, 95);
+
+				for (j = a; j <= b; j++)
 					ins->ta[j] = (uint8_t)i;
 
 				if (fread(s->pek, ih_PATWave.waveSize, 1, f) != 1)

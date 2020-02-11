@@ -31,6 +31,7 @@
 #endif
 #include "ft2_gfxdata.h"
 #include "ft2_palette.h"
+#include "ft2_pattern_draw.h"
 
 // defined at the bottom of this file
 extern const uint8_t defConfigData[CONFIG_FILE_SIZE];
@@ -192,6 +193,7 @@ static void loadConfigFromBuffer(uint8_t defaults)
 	changeBadgeType(config.id_TritonProd);
 	editor.ui.maxVisibleChannels = (uint8_t)(2 + ((config.ptnMaxChannels + 1) * 2));
 	setPal16(palTable[config.cfg_StdPalNr], true);
+	updatePattFontPtrs();
 
 	unlockMixerCallback();
 }
@@ -270,7 +272,8 @@ bool loadConfig(bool showErrorFlag)
 
 	audio.currOutputDevice = getAudioOutputDeviceFromConfig();
 	audio.currInputDevice = getAudioInputDeviceFromConfig();
-#ifdef MIDI_ENABLED
+
+#ifdef HAS_MIDI
 	if (midi.initThreadDone)
 	{
 		setMidiInputDeviceFromConfig();
@@ -391,7 +394,8 @@ bool saveConfig(bool showErrorFlag)
 	}
 
 	saveAudioDevicesToConfig(audio.currOutputDevice, audio.currInputDevice);
-#ifdef MIDI_ENABLED
+
+#ifdef HAS_MIDI
 	saveMidiInputDeviceToConfig();
 #endif
 
@@ -796,7 +800,9 @@ static void setConfigRadioButtonStates(void)
 		case CONFIG_SCREEN_IO_DEVICES:    tmpID = RB_CONFIG_IO_DEVICES;    break;
 		case CONFIG_SCREEN_LAYOUT:        tmpID = RB_CONFIG_LAYOUT;        break;
 		case CONFIG_SCREEN_MISCELLANEOUS: tmpID = RB_CONFIG_MISCELLANEOUS; break;
+#ifdef HAS_MIDI
 		case CONFIG_SCREEN_MIDI_INPUT:    tmpID = RB_CONFIG_MIDI_INPUT;    break;
+#endif
 	}
 	radioButtons[tmpID].state = RADIOBUTTON_CHECKED;
 
@@ -811,8 +817,10 @@ void setConfigIORadioButtonStates(void) // accessed by other .c files
 	uncheckRadioButtonGroup(RB_GROUP_CONFIG_SOUND_BUFF_SIZE);
 
 	tmpID = RB_CONFIG_SBS_1024;
-	     if (config.specialFlags & BUFFSIZE_512)  tmpID = RB_CONFIG_SBS_512;
-	else if (config.specialFlags & BUFFSIZE_2048) tmpID = RB_CONFIG_SBS_2048;
+	if (config.specialFlags & BUFFSIZE_512)
+		tmpID = RB_CONFIG_SBS_512;
+	else if (config.specialFlags & BUFFSIZE_2048)
+		tmpID = RB_CONFIG_SBS_2048;
 
 	radioButtons[tmpID].state = RADIOBUTTON_CHECKED;
 
@@ -1018,7 +1026,11 @@ static void setConfigMiscCheckButtonStates(void)
 	checkBoxes[CB_CONF_CHANGE_PATTLEN_INS_DEL].checked = config.recTrueInsert;
 #ifdef MIDI_ENABLED
 	checkBoxes[CB_CONF_MIDI_ALLOW_PC].checked = config.recMIDIAllowPC;
+#ifdef HAS_MIDI
 	checkBoxes[CB_CONF_MIDI_ENABLE].checked = midi.enable;
+#else
+	checkBoxes[CB_CONF_MIDI_ENABLE].checked = false;
+#endif
 	checkBoxes[CB_CONF_MIDI_REC_ALL].checked = config.recMIDIAllChn;
 	checkBoxes[CB_CONF_MIDI_REC_TRANS].checked = config.recMIDITransp;
 	checkBoxes[CB_CONF_MIDI_REC_VELOC].checked = config.recMIDIVelocity;
@@ -1104,8 +1116,9 @@ void showConfigScreen(void)
 	textOutShadow(22,  20, PAL_FORGRND, PAL_DSKTOP2, "I/O devices");
 	textOutShadow(22,  36, PAL_FORGRND, PAL_DSKTOP2, "Layout");
 	textOutShadow(22,  52, PAL_FORGRND, PAL_DSKTOP2, "Miscellaneous");
+#ifdef HAS_MIDI
 	textOutShadow(22,  68, PAL_FORGRND, PAL_DSKTOP2, "MIDI input");
-
+#endif
 	textOutShadow(19,  92, PAL_FORGRND, PAL_DSKTOP2, "Auto save");
 
 	switch (editor.currConfigScreen)
@@ -1384,13 +1397,13 @@ void showConfigScreen(void)
 
 			blitFast(517, 51, midiLogo, 103, 55);
 
+#ifdef HAS_MIDI
 			showPushButton(PB_CONFIG_MIDI_INPUT_DOWN);
 			showPushButton(PB_CONFIG_MIDI_INPUT_UP);
-#ifdef MIDI_ENABLED
 			rescanMidiInputDevices();
 			drawMidiInputList();
-#endif
 			showScrollBar(SB_MIDI_INPUT_SCROLL);
+#endif
 		}
 		break;
 	}
@@ -1497,10 +1510,12 @@ void hideConfigScreen(void)
 	hideTextBox(TB_CONF_DEF_TRACKS_DIR);
 	hideScrollBar(SB_MIDI_SENS);
 
+#ifdef HAS_MIDI
 	// CONFIG MIDI
 	hidePushButton(PB_CONFIG_MIDI_INPUT_DOWN);
 	hidePushButton(PB_CONFIG_MIDI_INPUT_UP);
 	hideScrollBar(SB_MIDI_INPUT_SCROLL);
+#endif
 
 	editor.ui.configScreenShown = false;
 }
@@ -1550,6 +1565,7 @@ void rbConfigMiscellaneous(void)
 	showConfigScreen();
 }
 
+#ifdef HAS_MIDI
 void rbConfigMidiInput(void)
 {
 	checkRadioButton(RB_CONFIG_MIDI_INPUT);
@@ -1558,6 +1574,7 @@ void rbConfigMidiInput(void)
 	hideConfigScreen();
 	showConfigScreen();
 }
+#endif
 
 void rbConfigSbs512(void)
 {
@@ -1864,6 +1881,7 @@ void rbConfigFontCapitals(void)
 {
 	config.ptnFont = PATT_FONT_CAPITALS;
 	checkRadioButton(RB_CONFIG_FONT_CAPITALS);
+	updatePattFontPtrs();
 	redrawPatternEditor();
 }
 
@@ -1871,6 +1889,7 @@ void rbConfigFontLowerCase(void)
 {
 	config.ptnFont = PATT_FONT_LOWERCASE;
 	checkRadioButton(RB_CONFIG_FONT_LOWERCASE);
+	updatePattFontPtrs();
 	redrawPatternEditor();
 }
 
@@ -1878,6 +1897,7 @@ void rbConfigFontFuture(void)
 {
 	config.ptnFont = PATT_FONT_FUTURE;
 	checkRadioButton(RB_CONFIG_FONT_FUTURE);
+	updatePattFontPtrs();
 	redrawPatternEditor();
 }
 
@@ -1885,6 +1905,7 @@ void rbConfigFontBold(void)
 {
 	config.ptnFont = PATT_FONT_BOLD;
 	checkRadioButton(RB_CONFIG_FONT_BOLD);
+	updatePattFontPtrs();
 	redrawPatternEditor();
 }
 
@@ -2029,8 +2050,13 @@ void cbMIDIAllowPC(void)
 
 void cbMIDIEnable(void)
 {
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 	midi.enable ^= 1;
+#else
+	checkBoxes[CB_CONF_MIDI_ENABLE].checked = false;
+	drawCheckBox(CB_CONF_MIDI_ENABLE);
+
+	okBox(0, "System message", "This program was not compiled with MIDI functionality!");
 #endif
 }
 

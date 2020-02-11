@@ -90,11 +90,12 @@ scrollBar_t scrollBars[NUM_SCROLLBARS] =
 	//x,   y,   w,  h,  type,                 style                   funcOnDown
 	{ 578, 158, 29, 13, SCROLLBAR_HORIZONTAL, SCROLLBAR_THUMB_NOFLAT, sbMIDISens },
 
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 	// ------ CONFIG MIDI SCROLLBARS ------
 	//x,   y,  w,  h,   type,               style                 funcOnDown
 	{ 483, 15, 18, 143, SCROLLBAR_VERTICAL, SCROLLBAR_THUMB_FLAT, sbMidiInputSetPos },
 #endif
+
 	// ------ DISK OP. SCROLLBARS ------
 	//x,   y,  w,  h,   type,               style                 funcOnDown
 	{ 335, 15, 18, 143, SCROLLBAR_VERTICAL, SCROLLBAR_THUMB_FLAT, sbDiskOpSetPos }
@@ -354,6 +355,10 @@ void setScrollBarPos(uint16_t scrollBarID, uint32_t pos, bool triggerCallBack)
 	assert(scrollBarID < NUM_SCROLLBARS);
 	scrollBar = &scrollBars[scrollBarID];
 
+	if (scrollBar->oldPos == pos)
+		return;
+	scrollBar->oldPos = pos;
+
 	if (scrollBar->page == 0)
 	{
 		scrollBar->pos = 0;
@@ -404,8 +409,12 @@ void setScrollBarEnd(uint16_t scrollBarID, uint32_t end)
 	if (end < 1)
 		end = 1;
 
-	scrollBar->end = end;
+	if (scrollBar->oldEnd == end)
+		return;
+	scrollBar->oldEnd = end;
 
+	scrollBar->end = end;
+	
 	setPos = false;
 	if (scrollBar->pos >= end)
 	{
@@ -437,6 +446,10 @@ void setScrollBarPageLength(uint16_t scrollBarID, uint32_t pageLength)
 
 	if (pageLength < 1)
 		pageLength = 1;
+
+	if (scrollBar->oldPage == pageLength)
+		return;
+	scrollBar->oldPage = pageLength;
 
 	scrollBar->page = pageLength;
 	if (scrollBar->end > 0)
@@ -617,6 +630,13 @@ void handleScrollBarsWhileMouseDown(void)
 
 void initializeScrollBars(void)
 {
+	for (int32_t i = 0; i < NUM_SCROLLBARS; i++)
+	{
+		scrollBars[i].oldEnd = 0xFFFFFFFF;
+		scrollBars[i].oldPage = 0xFFFFFFFF;
+		scrollBars[i].oldPos = 0xFFFFFFFF;
+	}
+
 	// pattern editor
 	setScrollBarPageLength(SB_CHAN_SCROLL, 8);
 	setScrollBarEnd(SB_CHAN_SCROLL, 8);
@@ -652,8 +672,11 @@ void initializeScrollBars(void)
 	setScrollBarEnd(SB_AUDIO_OUTPUT_SCROLL, 1);
 	setScrollBarPageLength(SB_AUDIO_INPUT_SCROLL, 4);
 	setScrollBarEnd(SB_AUDIO_INPUT_SCROLL, 1);
+
+#ifdef HAS_MIDI
 	setScrollBarPageLength(SB_MIDI_INPUT_SCROLL, 15);
 	setScrollBarEnd(SB_MIDI_INPUT_SCROLL, 1);
+#endif
 
 	// disk op.
 	setScrollBarPageLength(SB_DISKOP_LIST, DISKOP_ENTRY_NUM);

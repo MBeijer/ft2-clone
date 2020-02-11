@@ -18,9 +18,7 @@
 #include "ft2_diskop.h"
 #include "ft2_gfxdata.h"
 #include "ft2_audioselector.h"
-#ifdef MIDI_ENABLED
 #include "ft2_midi.h"
-#endif
 #include "ft2_gfxdata.h"
 
 #define NUM_CURSORS 6
@@ -480,7 +478,7 @@ void mouseWheelHandler(bool directionUp)
 						directionUp ? scrollAudInputDevListUp() : scrollAudInputDevListDown();
 				}
 			}
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 			else if (editor.currConfigScreen == CONFIG_SCREEN_MIDI_INPUT)
 			{
 				// midi input device selector
@@ -674,18 +672,28 @@ void mouseButtonDownHandler(uint8_t mouseButton)
 		return;
 	}
 
-	     if (mouseButton == SDL_BUTTON_LEFT)  mouse.leftButtonPressed = true;
-	else if (mouseButton == SDL_BUTTON_RIGHT) mouse.rightButtonPressed = true;
+	// mouse 0,0 = open exit dialog
+	if (mouse.x == 0 && mouse.y == 0)
+	{
+		if (quitBox(false) == 1)
+			editor.throwExit = true;
+
+		// release button presses from okBox()
+		mouse.leftButtonPressed = false;
+		mouse.rightButtonPressed = false;
+		mouse.leftButtonReleased = false;
+		mouse.rightButtonReleased = false;
+
+		return;
+	}
+
+	if (mouseButton == SDL_BUTTON_LEFT)
+		mouse.leftButtonPressed = true;
+	else if (mouseButton == SDL_BUTTON_RIGHT)
+		mouse.rightButtonPressed = true;
 
 	mouse.leftButtonReleased = false;
 	mouse.rightButtonReleased = false;
-
-	// mouse 0,0 = open exit dialog
-	if (mouse.x == 0 && mouse.y == 0 && quitBox(false) == 1)
-	{
-		editor.throwExit = true;
-		return;
-	}
 
 	// don't do mouse down testing here if we already are using an object
 	if (mouse.lastUsedObjectType != OBJECT_NONE)
@@ -716,15 +724,16 @@ void mouseButtonDownHandler(uint8_t mouseButton)
 	if (editor.ui.sysReqShown)
 		return;
 
-	if (testInstrVolEnvMouseDown(false))    return;
-	if (testInstrPanEnvMouseDown(false))    return;
-	if (testDiskOpMouseDown(false))         return;
-	if (testPianoKeysMouseDown(false))      return;
-	if (testSamplerDataMouseDown())         return;
-	if (testPatternDataMouseDown())         return;
-	if (testScopesMouseDown())              return;
-	if (testAudioDeviceListsMouseDown())    return;
-#ifdef MIDI_ENABLED
+	if (testInstrVolEnvMouseDown(false)) return;
+	if (testInstrPanEnvMouseDown(false)) return;
+	if (testDiskOpMouseDown(false))      return;
+	if (testPianoKeysMouseDown(false))   return;
+	if (testSamplerDataMouseDown())      return;
+	if (testPatternDataMouseDown())      return;
+	if (testScopesMouseDown())           return;
+	if (testAudioDeviceListsMouseDown()) return;
+
+#ifdef HAS_MIDI
 	if (testMidiInputDeviceListMouseDown()) return;
 #endif
 }
@@ -768,8 +777,8 @@ void handleLastGUIObjectDown(void)
 
 void updateMouseScaling(void)
 {
-	video.dMouseXMul = (double)SCREEN_W / video.renderW;
-	video.dMouseYMul = (double)SCREEN_H / video.renderH;
+	if (video.renderW > 0.0) video.dMouseXMul = (double)SCREEN_W / video.renderW;
+	if (video.renderH > 0.0) video.dMouseYMul = (double)SCREEN_H / video.renderH;
 }
 
 void readMouseXY(void)
@@ -826,8 +835,8 @@ void readMouseXY(void)
 	if (my < 0) mx = 0;
 
 	// multiply coords by video upscaling factors (don't round)
-	mx = (uint32_t)(mx * video.dMouseXMul);
-	my = (uint32_t)(my * video.dMouseYMul);
+	mx = (int32_t)(mx * video.dMouseXMul);
+	my = (int32_t)(my * video.dMouseYMul);
 
 	if (mx >= SCREEN_W) mx = SCREEN_W - 1;
 	if (my >= SCREEN_H) my = SCREEN_H - 1;

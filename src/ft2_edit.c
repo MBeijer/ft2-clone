@@ -438,7 +438,13 @@ void recordNote(uint8_t note, int8_t vol)
 		editor.keyOnTab[c] = note;
 
 		if (pattpos >= oldpattpos) // non-FT2 fix: only do this if we didn't quantize to next row
+		{
+#ifdef HAS_MIDI
 			playTone(c, editor.curInstr, note, vol, midi.currMIDIVibDepth, midi.currMIDIPitch);
+#else
+			playTone(c, editor.curInstr, note, vol, 0, 0);
+#endif
+		}
 
 		if (editmode || recmode)
 		{
@@ -490,7 +496,13 @@ void recordNote(uint8_t note, int8_t vol)
 		editor.keyOffTime[c] = ++editor.keyOffNr;
 
 		if (pattpos >= oldpattpos) // non-FT2 fix: only do this if we didn't quantize to next row
+		{
+#ifdef HAS_MIDI
 			playTone(c, editor.curInstr, 97, vol, midi.currMIDIVibDepth, midi.currMIDIPitch);
+#else
+			playTone(c, editor.curInstr, 97, vol, 0, 0);
+#endif
+		}
 
 		if (config.recRelease && recmode)
 		{
@@ -1846,7 +1858,7 @@ static bool askForScaleFade(char *msg)
 	uint8_t err;
 
 	sprintf(volstr, "%0.2f,%0.2f", dVolScaleFK1, dVolScaleFK2);
-	if (inputBox(2, msg, volstr, sizeof (volstr) - 1) != 1)
+	if (inputBox(1, msg, volstr, sizeof (volstr) - 1) != 1)
 		return false;
 
 	err = false;

@@ -21,6 +21,8 @@
 #include "ft2_mouse.h"
 #include "ft2_video.h"
 
+#include "ft2_module_loader.h"
+
 // for pattern marking w/ keyboard
 static int8_t lastChMark;
 static int16_t lastRowMark;
@@ -57,7 +59,8 @@ bool allocatePattern(uint16_t nr) // for tracker use only, not in loader!
 		 * do that to avoid out of bondary row look-up between out-of-sync replayer
 		 * state and tracker state (yes it used to happen, rarely). We're not wasting
 		 * too much RAM for a modern computer anyway. Worst case: 256 allocated
-		 * patterns would be ~10MB. */
+		 * patterns would be ~10MB.
+		 */
 
 		patt[nr] = (tonTyp *)calloc((MAX_PATT_LEN * TRACK_WIDTH) + 16, 1);
 		if (patt[nr] == NULL)
@@ -657,7 +660,13 @@ void patternEditorExtended(void)
 	drawFramework(2,  2, 51, 20, FRAMEWORK_TYPE2);
 	drawFramework(2, 31, 51, 20, FRAMEWORK_TYPE2);
 
+	// force updating of end/page/length when showing scrollbar
+	scrollBars[SB_POS_ED].oldEnd = 0xFFFFFFFF;
+	scrollBars[SB_POS_ED].oldPage = 0xFFFFFFFF;
+	scrollBars[SB_POS_ED].oldPos = 0xFFFFFFFF;
+
 	showScrollBar(SB_POS_ED);
+
 	showPushButton(PB_POSED_POS_UP);
 	showPushButton(PB_POSED_POS_DOWN);
 	showPushButton(PB_POSED_INS);
@@ -883,7 +892,7 @@ void handlePatternDataMouseDown(bool mouseButtonHeld)
 	{
 		if (mouse.x < 29)
 		{
-			scrollBarScrollUp(SB_CHAN_SCROLL,   1);
+			scrollBarScrollUp(SB_CHAN_SCROLL, 1);
 			forceMarking = true;
 		}
 		else if (mouse.x > 604)
@@ -1509,6 +1518,7 @@ void jumpToChannel(uint8_t channel) // for ALT+q..i ALT+a..k
 	if (editor.ui.pattChanScrollShown)
 	{
 		assert(song.antChn > editor.ui.numChannelsShown);
+
 		if (channel >= editor.ui.channelOffset+editor.ui.numChannelsShown)
 			scrollBarScrollDown(SB_CHAN_SCROLL, (channel - (editor.ui.channelOffset + editor.ui.numChannelsShown)) + 1);
 		else if (channel < editor.ui.channelOffset)
@@ -2063,6 +2073,10 @@ void drawPosEdNums(int16_t songPos)
 {
 	uint8_t y;
 	int16_t entry;
+	uint32_t color1, color2;
+
+	color1 = video.palette[PAL_PATTEXT];
+	color2 = video.palette[PAL_FORGRND];
 
 	if (songPos >= song.len)
 		songPos = song.len - 1;
@@ -2092,13 +2106,13 @@ void drawPosEdNums(int16_t songPos)
 
 		if (editor.ui.extended)
 		{
-			pattTwoHexOut(8,  4 + (y * 9), PAL_PATTEXT, (uint8_t)entry);
-			pattTwoHexOut(32, 4 + (y * 9), PAL_PATTEXT, song.songTab[entry]);
+			pattTwoHexOut(8,  4 + (y * 9), (uint8_t)entry, color1);
+			pattTwoHexOut(32, 4 + (y * 9), song.songTab[entry], color1);
 		}
 		else
 		{
-			pattTwoHexOut(8,  4 + (y * 8), PAL_PATTEXT, (uint8_t)entry);
-			pattTwoHexOut(32, 4 + (y * 8), PAL_PATTEXT, song.songTab[entry]);
+			pattTwoHexOut(8,  4 + (y * 8), (uint8_t)entry, color1);
+			pattTwoHexOut(32, 4 + (y * 8), song.songTab[entry], color1);
 		}
 	}
 
@@ -2107,13 +2121,13 @@ void drawPosEdNums(int16_t songPos)
 	// middle
 	if (editor.ui.extended)
 	{
-		pattTwoHexOut(8,  23, PAL_FORGRND, (uint8_t)songPos);
-		pattTwoHexOut(32, 23, PAL_FORGRND, song.songTab[songPos]);
+		pattTwoHexOut(8,  23, (uint8_t)songPos, color2);
+		pattTwoHexOut(32, 23, song.songTab[songPos], color2);
 	}
 	else
 	{
-		pattTwoHexOut(8,  22, PAL_FORGRND, (uint8_t)songPos);
-		pattTwoHexOut(32, 22, PAL_FORGRND, song.songTab[songPos]);
+		pattTwoHexOut(8,  22, (uint8_t)songPos, color2);
+		pattTwoHexOut(32, 22, song.songTab[songPos], color2);
 	}
 
 	// bottom two
@@ -2125,13 +2139,13 @@ void drawPosEdNums(int16_t songPos)
 
 		if (editor.ui.extended)
 		{
-			pattTwoHexOut(8,  33 + (y * 9), PAL_PATTEXT, (uint8_t)entry);
-			pattTwoHexOut(32, 33 + (y * 9), PAL_PATTEXT, song.songTab[entry]);
+			pattTwoHexOut(8,  33 + (y * 9), (uint8_t)entry, color1);
+			pattTwoHexOut(32, 33 + (y * 9), song.songTab[entry], color1);
 		}
 		else
 		{
-			pattTwoHexOut(8,  32 + (y * 8), PAL_PATTEXT, (uint8_t)entry);
-			pattTwoHexOut(32, 32 + (y * 8), PAL_PATTEXT, song.songTab[entry]);
+			pattTwoHexOut(8,  32 + (y * 8), (uint8_t)entry, color1);
+			pattTwoHexOut(32, 32 + (y * 8), song.songTab[entry], color1);
 		}
 	}
 }
@@ -2256,7 +2270,7 @@ void drawPlaybackTime(void)
 	char str[2 + 1];
 	uint32_t a, MI_TimeH, MI_TimeM, MI_TimeS;
 
-	a = ((song.musicTime / 256) * 5) / 512;
+	a = ((song.musicTime >> 8) * 5) >> 9;
 	MI_TimeH = a / 3600;
 	a -= (MI_TimeH * 3600);
 	MI_TimeM = a / 60;
@@ -2295,12 +2309,12 @@ void changeLogoType(uint8_t logoType)
 	if (logoType == 0)
 	{
 		pushButtons[PB_LOGO].bitmapUnpressed = &ft2LogoBadges[(154 * 32) * 0];
-		pushButtons[PB_LOGO].bitmapPressed   = &ft2LogoBadges[(154 * 32) * 1];
+		pushButtons[PB_LOGO].bitmapPressed = &ft2LogoBadges[(154 * 32) * 1];
 	}
 	else
 	{
 		pushButtons[PB_LOGO].bitmapUnpressed = &ft2LogoBadges[(154 * 32) * 2];
-		pushButtons[PB_LOGO].bitmapPressed   = &ft2LogoBadges[(154 * 32) * 3];
+		pushButtons[PB_LOGO].bitmapPressed = &ft2LogoBadges[(154 * 32) * 3];
 	}
 
 	drawPushButton(PB_LOGO);
@@ -2313,12 +2327,12 @@ void changeBadgeType(uint8_t badgeType)
 	if (badgeType == 0)
 	{
 		pushButtons[PB_BADGE].bitmapUnpressed = &ft2InfoBadges[(25 * 32) * 0];
-		pushButtons[PB_BADGE].bitmapPressed   = &ft2InfoBadges[(25 * 32) * 1];
+		pushButtons[PB_BADGE].bitmapPressed = &ft2InfoBadges[(25 * 32) * 1];
 	}
 	else
 	{
 		pushButtons[PB_BADGE].bitmapUnpressed = &ft2InfoBadges[(25 * 32) * 2];
-		pushButtons[PB_BADGE].bitmapPressed   = &ft2InfoBadges[(25 * 32) * 3];
+		pushButtons[PB_BADGE].bitmapPressed = &ft2InfoBadges[(25 * 32) * 3];
 	}
 
 	drawPushButton(PB_BADGE);
@@ -2689,7 +2703,7 @@ static void zapSong(void)
 	song.songPos = 0;
 	song.globVol = 64;
 
-	memset(song.name,    0, sizeof (song.name));
+	memset(song.name, 0, sizeof (song.name));
 	memset(song.songTab, 0, sizeof (song.songTab));
 
 	// zero all pattern data and reset pattern lengths
@@ -2803,6 +2817,7 @@ void pbToggleBadge(void)
 
 void resetChannelOffset(void)
 {
+	editor.ui.pattChanScrollShown = song.antChn > getMaxVisibleChannels();
 	editor.cursor.object = CURSOR_NOTE;
 	editor.cursor.ch = 0;
 	setScrollBarPos(SB_CHAN_SCROLL, 0, true);
@@ -2903,7 +2918,7 @@ void expandPattern(void)
 		editor.pattPos = song.pattPos;
 
 		editor.ui.updatePatternEditor = true;
-		editor.ui.updatePosSections   = true;
+		editor.ui.updatePosSections = true;
 
 		unlockMixerCallback();
 		setSongModifiedFlag();

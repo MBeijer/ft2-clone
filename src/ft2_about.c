@@ -7,7 +7,7 @@
 
 // ported from original FT2 code
 
-#define NUM_STARS 650
+#define NUM_STARS 512
 #define ABOUT_SCREEN_W 626
 #define ABOUT_SCREEN_H 167
 #define FT2_LOGO_W 449
@@ -231,6 +231,8 @@ void aboutFrame(void)
 
 void showAboutScreen(void) // called once when About screen is opened
 {
+#define TEXT_BORDER_COL 0x2E2E2E
+
 	const char *infoString = "Clone by Olav \"8bitbubsy\" S\025rensen - https://16-bits.org";
 	const char *extraInfo = "SDL1.2/BigEndian version by Marlon Beijer @ AmigaDev.com";
 	char verText[32];
@@ -249,9 +251,11 @@ void showAboutScreen(void) // called once when About screen is opened
 	blit32(91, 31, ft2Logo, FT2_LOGO_W, FT2_LOGO_H);
 	blit(146, 113, aboutText, ABOUT_TEXT_W, ABOUT_TEXT_H);
 
+	setCustomPalColor(TEXT_BORDER_COL); // sets PAL_CUSTOM
+
 	x = 5 + (SCREEN_W - textWidth(infoString)) / 2;
 	y = 147;
-	textOutBorder(x, y, PAL_FORGRND, PAL_BUTTON2, infoString);
+	textOutBorder(x, y, PAL_FORGRND, PAL_CUSTOM, infoString);
 
 	x = 5 + (SCREEN_W - textWidth(extraInfo)) / 2;
 	y = 160;
@@ -259,7 +263,7 @@ void showAboutScreen(void) // called once when About screen is opened
 	sprintf(verText, "v%s (compiled on %s)", PROG_VER_STR, __DATE__);
 	x = ((3 + ABOUT_SCREEN_W) - textWidth(verText)) / 2;
 	y = (3 + ABOUT_SCREEN_H) - ((FONT1_CHAR_H - 2) + 3);
-	textOutBorder(x, y, PAL_FORGRND, PAL_BUTTON2, verText);
+	textOutBorder(x, y, PAL_FORGRND, PAL_CUSTOM, verText);
 
 	aboutInit();
 

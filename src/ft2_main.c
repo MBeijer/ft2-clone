@@ -29,12 +29,10 @@
 #include "ft2_sampling.h"
 #include "ft2_audioselector.h"
 #include "ft2_help.h"
-#ifdef MIDI_ENABLED
 #include "ft2_midi.h"
-#endif
 #include "ft2_events.h"
 
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 static SDL_Thread *initMidiThread;
 #endif
 
@@ -103,6 +101,13 @@ int main(int argc, char *argv[])
 	if (!cpu.hasSSE)
 	{
 		showErrorMsgBox("Your computer's processor doesn't have the SSE instruction set\n" \
+		                "which is needed for this program to run. Sorry!");
+		return 0;
+	}
+
+	if (!cpu.hasSSE2)
+	{
+		showErrorMsgBox("Your computer's processor doesn't have the SSE2 instruction set\n" \
 		                "which is needed for this program to run. Sorry!");
 		return 0;
 	}
@@ -196,13 +201,14 @@ int main(int argc, char *argv[])
 #ifdef _WIN32 // on Windows we show the window at this point
 	SDL_ShowWindow(video.window);
 #endif
+
 	if (config.windowFlags & START_IN_FULLSCR)
 	{
 		video.fullscreen = true;
 		enterFullscreen();
 	}
 
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 	// set up MIDI input (in a thread because it can take quite a while on f.ex. macOS)
 	initMidiThread = SDL_CreateThread(initMidiFunc, NULL
 #if SDL_VERSION_ATLEAST(2,0,4)
@@ -222,6 +228,7 @@ int main(int argc, char *argv[])
 	setupWaitVBL();
 	handleModuleLoadFromArg(argc, argv);
 
+	editor.mainLoopOngoing = true;
 	while (editor.programRunning)
 	{
 		beginFPSCounter();
@@ -291,20 +298,20 @@ static void initializeVars(void)
 	editor.ptnJumpPos[3] = 0x30;
 
 	editor.copyMaskEnable = true;
-	memset(editor.copyMask,  1, sizeof (editor.copyMask));
+	memset(editor.copyMask, 1, sizeof (editor.copyMask));
 	memset(editor.pasteMask, 1, sizeof (editor.pasteMask));
 
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 	midi.enable = true;
 #endif
 
 	editor.diskOpReadOnOpen = true;
-	editor.programRunning   = true;
+	editor.programRunning = true;
 }
 
 static void cleanUpAndExit(void) // never call this inside the main loop!
 {
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 	if (midi.closeMidiOnExit)
 	{
 		closeMidiInDevice();
@@ -319,14 +326,14 @@ static void cleanUpAndExit(void) // never call this inside the main loop!
 	freeDiskOp();
 	clearCopyBuffer();
 	freeAudioDeviceSelectorBuffers();
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 	freeMidiInputDeviceList();
 #endif
 	windUpFTHelp();
 	freeTextBoxes();
 	freeMouseCursors();
 
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 	if (midi.inputDeviceName != NULL)
 	{
 		free(midi.inputDeviceName);
@@ -413,10 +420,8 @@ static void setupPerfFreq(void)
 	video.vblankTimeLen = (uint32_t)dInt;
 
 	// fractional part scaled to 0..2^32-1
-	dFrac *= UINT32_MAX + 1.0;
-	if (dFrac > (double)UINT32_MAX)
-		dFrac = (double)UINT32_MAX;
-	video.vblankTimeLenFrac = (uint32_t)round(dFrac);
+	dFrac *= UINT32_MAX;
+	video.vblankTimeLenFrac = (uint32_t)(dFrac + 0.5);
 }
 
 #ifdef _WIN32

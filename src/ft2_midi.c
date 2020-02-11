@@ -1,3 +1,5 @@
+#ifdef HAS_MIDI
+
 // for finding memory leaks in debug mode with Visual Studio
 #if defined _DEBUG && defined _MSC_VER
 #include <crtdbg.h>
@@ -13,7 +15,7 @@
 #include "ft2_audio.h"
 #include "ft2_mouse.h"
 #include "ft2_pattern_ed.h"
-//#include "rtmidi/rtmidi_c.h"
+#include "rtmidi/rtmidi_c.h"
 
 // hide POSIX warnings
 #ifdef _MSC_VER
@@ -21,14 +23,14 @@
 #endif
 
 // MIDI INPUT ONLY!
-#ifdef MIDI_ENABLED
+
 static volatile bool midiDeviceOpened;
 static bool recMIDIValidChn = true;
 static RtMidiPtr midiDev;
 
 static inline void midiInSetChannel(uint8_t status)
 {
-	recMIDIValidChn = (config.recMIDIAllChn || (status & 0x0F) == config.recMIDIChn -1);
+	recMIDIValidChn = (config.recMIDIAllChn || (status & 0xF) == config.recMIDIChn-1);
 }
 
 static inline void midiInKeyAction(int8_t m, uint8_t mv)
@@ -518,4 +520,7 @@ int32_t SDLCALL initMidiFunc(void *ptr)
 
 	return true;
 }
+
+#else
+typedef int make_iso_compilers_happy; // kludge: prevent warning about empty .c file if HAS_MIDI is not defined
 #endif

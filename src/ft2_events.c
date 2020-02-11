@@ -21,9 +21,7 @@
 #include "ft2_module_saver.h"
 #include "ft2_sample_loader.h"
 #include "ft2_mouse.h"
-#ifdef MIDI_ENABLED
 #include "ft2_midi.h"
-#endif
 #include "ft2_video.h"
 #include "ft2_trim.h"
 #include "ft2_inst_ed.h"
@@ -107,7 +105,7 @@ void handleThreadEvents(void)
 
 void handleEvents(void)
 {
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 	// called after MIDI has been initialized
 	if (midi.rescanDevicesFlag)
 	{
@@ -401,7 +399,6 @@ void setupCrashHandler(void)
 static void handleInput(void)
 {
 	char *inputText;
-	uint8_t vibDepth;
 	uint32_t eventType;
 	SDL_Event event;
 	SDL_Keycode key;
@@ -480,8 +477,10 @@ static void handleInput(void)
 #if SDL_VERSION_ATLEAST(2,0,0)
 		else if (event.type == SDL_MOUSEWHEEL)
 		{
-			     if (event.wheel.y > 0) mouseWheelHandler(MOUSE_WHEEL_UP);
-			else if (event.wheel.y < 0) mouseWheelHandler(MOUSE_WHEEL_DOWN);
+			if (event.wheel.y > 0)
+				mouseWheelHandler(MOUSE_WHEEL_UP);
+			else if (event.wheel.y < 0)
+				mouseWheelHandler(MOUSE_WHEEL_DOWN);
 		}
 #endif
 #if SDL_VERSION_ATLEAST(2,0,0)
@@ -545,9 +544,9 @@ false
 			editor.programRunning = false;
 	}
 
-#ifdef MIDI_ENABLED
+#ifdef HAS_MIDI
 	// MIDI vibrato
-	vibDepth = (midi.currMIDIVibDepth >> 9) & 0x0F;
+	uint8_t vibDepth = (midi.currMIDIVibDepth >> 9) & 0x0F;
 	if (vibDepth > 0)
 		recordMIDIEffect(0x04, 0xA0 | vibDepth);
 #endif
