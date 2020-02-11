@@ -1,8 +1,9 @@
 # ft2-clone
 Fasttracker II clone for Windows/macOS/Linux
-# FastTracker II Clone - BigEndian and SDL1.2 support
 
 Aims to be a **highly accurate** clone of the classic Fasttracker II software for MS-DOS.
+
+# BigEndian and SDL1.2 support
 This repo is a fork of Olaf Sørensen's ft2-clone that you can find here: https://16-bits.org/ft2.php
 The main purpose of this fork is to support older systems and big endian systems.
 
