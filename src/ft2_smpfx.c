@@ -758,7 +758,11 @@ void sfxPreviewFilter(uint32_t cutoff)
 	s->origDataPtr = sampleData;
 	s->length = len;
 	s->dataPtr = s->origDataPtr + SMP_DAT_OFFSET;
-	s->loopStart = s->loopLength = 0;
+	if (smpEd_Rx1 < smpEd_Rx2) // disable loop if previewing marked section
+	{
+		s->loopStart = 0;
+		s->loopLength = 0;
+	}
 	fixSample(s);
 
 	const int32_t oldX1 = smpEd_Rx1;
