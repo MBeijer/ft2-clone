@@ -788,7 +788,7 @@ void sfxPreviewFilter(uint32_t cutoff)
 	updateVolPanAutoVib(ch);
 
 	while (ch->status & CS_TRIGGER_VOICE); // wait for voice to trigger in mixer
-	SDL_Delay(1500); // wait 1.5 seconds
+	SDL_Delay(1000); // wait 1 second
 
 	// we're done, stop voice and free temporary data
 	pauseAudio();
